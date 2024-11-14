@@ -11,7 +11,7 @@
 #include <QMouseEvent>
 
 watchdial::watchdial(QWidget* parent)
-    : QWidget(parent), showMinuteHand(true), isWorking(true), second(0), minute(0)
+    : QWidget(parent), showMinuteHand(true), isWorking(true), second(0), minute(0), isResting(false), restSecond(0)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -23,8 +23,8 @@ watchdial::watchdial(QWidget* parent)
                                   "font-family: '黑体';"
                                   "font-style: italic;"
                                   "color: #3dc5c4;"
-                                  "font-size: 18px;"
-                                  "}");
+                                  "font-size: 18px;}"
+                                  );
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     QSpacerItem* topSpacer = new QSpacerItem(20, 20, QSizePolicy::Minimum, QSizePolicy::Expanding);
@@ -89,13 +89,17 @@ void watchdial::paintEvent(QPaintEvent* event)
     painter.drawPixmap(-50, -50, 100, 100, dialImage);
 
     painter.save();
-    painter.rotate(6.0 * second);
+    if (isResting) {
+        painter.rotate(18.0 * restSecond); // 休息时间内每秒旋转18度
+    } else {
+        painter.rotate(6.0 * second); // 工作时间内每秒旋转6度
+    }
     painter.drawPixmap(-1, -35, 2, 30, secondHandImage); // 缩短秒针长度
     painter.restore();
 
     if (showMinuteHand) {
         painter.save();
-        painter.rotate(18.0 * minute);
+        painter.rotate(18.0 * minute); // 每分钟旋转6度
         painter.drawPixmap(-1, -25, 2, 20, minuteHandImage);
         painter.restore();
     }
@@ -104,22 +108,37 @@ void watchdial::paintEvent(QPaintEvent* event)
 void watchdial::updateDial()
 {
     if (isWorking) {
-        second++;
-        if (second == 60) {
-            second = 0;
-            minute++;
-            if (minute == 20) {
-                minute = 0;
-                showMinuteHand = !showMinuteHand;
-                trayIcon->showMessage(tr("提示"), tr("20分钟到了，放松一下眼睛吧！"));
+        if (isResting) {
+            restSecond++;
+            if (restSecond == 20) {
+                restSecond = 0;
+                isResting = false;
+                showMinuteHand = true;
+            }
+        } else {
+            second++;
+            if (second == 60) {
+                second = 0;
+                minute++;
+                if (minute == 20) { // 恢复为20分钟
+                    minute = 0;
+                    showMinuteHand = false;
+                    isResting = true;
+                    trayIcon->showMessage(tr("提示"), tr("20分钟到了，放松一下眼睛吧！"));
+                }
             }
         }
 
-        int remainingMinutes = 19 - minute;
-        int remainingSeconds = 59 - second;
-        countdownLabel->setText(QString("%1:%2")
-            .arg(remainingMinutes, 2, 10, QChar('0'))
-            .arg(remainingSeconds, 2, 10, QChar('0')));
+        if (isResting) {
+            int remainingSeconds = 20 - restSecond;
+            countdownLabel->setText(QString("00:%1").arg(remainingSeconds, 2, 10, QChar('0')));
+        } else {
+            int remainingMinutes = 19 - minute; // 20分钟倒计时
+            int remainingSeconds = 59 - second;
+            countdownLabel->setText(QString("%1:%2")
+                .arg(remainingMinutes, 2, 10, QChar('0'))
+                .arg(remainingSeconds, 2, 10, QChar('0')));
+        }
 
         update();
     }
@@ -135,6 +154,8 @@ void watchdial::reset()
 {
     second = 0;
     minute = 0;
+    restSecond = 0;
+    isResting = false;
     showMinuteHand = true;
     isWorking = true;
     pauseAction->setText(tr("暂停"));
