@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/dial.png</file>
+        <file>images/second_hand.png</file>
+        <file>images/minute_hand.png</file>
+    </qresource>
+</RCC>
