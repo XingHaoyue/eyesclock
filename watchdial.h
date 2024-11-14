@@ -37,8 +37,10 @@ private:
     QPixmap minuteHandImage;
     bool showMinuteHand;
     bool isWorking;
+    bool isResting;
     int second;
     int minute;
+    int restSecond;
     QMenu* contextMenu;
     QAction* pauseAction;
     QAction* minimizeAction;
